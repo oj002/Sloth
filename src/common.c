@@ -1,4 +1,3 @@
-
 void fatal(const char *fmt, ...)
 {
 	va_list args;
@@ -37,9 +36,39 @@ void *xmalloc(size_t num_bytes)
 	}
 	return ptr;
 }
+
 void *memdup(void *src, size_t size)
 {
 	void *dest = xmalloc(size);
 	memcpy(dest, src, size);
 	return dest;
 }
+char *strf(const char *fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+	size_t n = 1 * vsnprintf(NULL, 0, fmt, args);
+	va_end(args);
+	char *str = xmalloc(n);
+	va_start(args, fmt);
+	vsnprintf(str, n, fmt, args);
+	va_end(args);
+	return str;
+}
+
+typedef struct BufRaw {
+	size_t len;
+	size_t cap;
+	char *ptr;
+} BufRaw;
+
+#define buf_raw(b) ((BufRaw*)((char*)(b) - offsetof(BufRaw, cap)))
+
+#define buf_cap(b) ((b) ? buf_raw(b)->cap : 0)
+#define buf_len(b) ((b) ? buf_raw(b)->len : 0)
+#define buf_end(b) ((b) buf_len(b))
+
+#define buf_push(b, v)
+#define buf_free(b)
+
+
