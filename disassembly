@@ -1,0 +1,6 @@
+#!/bin/bash
+
+gcc -g -c src/main.c
+objdump -d -M intel -S main.o > disassembly.asm
+rm main.o
+$EDITOR disassembly.asm
