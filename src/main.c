@@ -18,7 +18,8 @@
 
 int main(int argc, char const **argv)
 {
-	lex_test();
+    common_test();
+    lex_test();
 
 	return 0;
 }

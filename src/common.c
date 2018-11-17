@@ -1,3 +1,6 @@
+#define MAX(a, b) ((a) >= (b) ? (a) : (b))
+#define MIN(a, b) ((a) <= (b) ? (a) : (b))
+
 void fatal(const char *fmt, ...)
 {
 	va_list args;
@@ -56,19 +59,61 @@ char *strf(const char *fmt, ...)
 	return str;
 }
 
+
+
 typedef struct BufRaw {
 	size_t len;
 	size_t cap;
-	char *ptr;
+	char ptr[];
 } BufRaw;
 
-#define buf_raw(b) ((BufRaw*)((char*)(b) - offsetof(BufRaw, cap)))
+#define BUF_BLOCK_SIZE 1024
+
+#define buf_raw(b) ((BufRaw*)((char*)(b) - offsetof(BufRaw, ptr)))
 
 #define buf_cap(b) ((b) ? buf_raw(b)->cap : 0)
 #define buf_len(b) ((b) ? buf_raw(b)->len : 0)
-#define buf_end(b) ((b) buf_len(b))
+#define buf_end(b) ((b) + buf_len(b))
 
-#define buf_push(b, v)
-#define buf_free(b)
+#define buf_push(b, v) (((b) \
+            ? ((buf_len(b) >= buf_cap(b)) \
+                ? ((b) = buf__grow(b, BUF_BLOCK_SIZE, sizeof(*b))) : 0) \
+            : ((b) = buf__new(BUF_BLOCK_SIZE, sizeof(*b)))), \
+        (b)[buf_len(b)] = v, ++(buf_raw(b)->len))
+        
+#define buf_free(b) ((b) ? (free(buf_raw(b)), b = NULL) : 0)
+#define buf_clear(b) ((b) ? buf_raw(b)->len = 0 : 0)
+// TODO: buf_printf
+
+void *buf__new(size_t count, size_t elem_size)
+{
+    BufRaw *new = xmalloc(offsetof(BufRaw, ptr) + count * elem_size);
+    new->len = 0;
+    new->cap = count;
+    return new->ptr;
+}
+void *buf__grow(const void *buf, size_t count, size_t elem_size)
+{
+    const size_t cap = buf_cap(buf) + count;
+    BufRaw *new = xrealloc(buf_raw(buf), offsetof(BufRaw, ptr) + cap * elem_size);
+    new->cap = cap;
+    return new->ptr;
+}
 
 
+
+void common_test(void)
+{
+    size_t *b = NULL;
+    for (size_t i = 0; i < 10001; ++i)
+        buf_push(b, i);
+
+    size_t sum = 0;
+    for (size_t *it = b; it != buf_end(b); ++it)
+        sum += *it;
+    
+    assert(sum == 50005000);
+    assert(buf_cap(b) == BUF_BLOCK_SIZE * 10);
+
+    buf_free(b);
+}
