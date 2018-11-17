@@ -61,10 +61,10 @@ char *strf(const char *fmt, ...)
 
 
 /**
- * @name Stechy Buffs
+ * @name Strechy Buffs
  * @brief Use a normal pointer as a dynamic array which allocates its memory 
- * in chuncks, for greater eviciency.
- * It write the length and capacity infront of the ptr.
+ * in chunks, for greater efficiency.
+ * It write the length and capacity in front of the ptr.
  * @{ */
 
 typedef struct BufRaw {
@@ -110,7 +110,7 @@ void *buf__grow(const void *buf, size_t count, size_t elem_size)
 /**
  * @name Arena allocator
  * @brief Allocates memory in big blocks and distributes it to 'the user'.
- * All of the memory is freeed at once.
+ * All of the memory is freed at once.
  * @{ */
 
 typedef struct Arena {
@@ -164,8 +164,8 @@ Arena intern_arena;
 
 /**
  * @Synopsis Allocates a new block of memory in the string intern arena.
- * This can be used to allow greater and less than comparision between
- * interned strings ensuring that they are gruped together sequentionaly.
+ * This can be used to allow greater than and less than comparisons between
+ * interned strings ensuring that they are grouped together sequentially.
  */
 #define str_intern_grow(nbytes) arena_grow(intern_arena, nbytes)
 
