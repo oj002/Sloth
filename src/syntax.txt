@@ -1,0 +1,86 @@
+Tokens:
+    Grouping:
+        () []
+        {}      A codeblock is in almost every case equivilant
+                to a single statement
+                or multiple commaseperated once.
+                Exeptions beeing containers and switch statements.
+    Unary:
+        + - ! ~ & *
+        ++ --
+    Binary:
+        Math:
+            + - | ^ << >>
+            * / % &
+        Assignments:
+            :=  type deduction assignment
+            += -= |= ^= <<= >>= *= /= %= Comparoson:
+            == != < <= > >= && ||
+    Ternary:
+        cond ? true_expr : false_expr
+
+Literals:
+    NAME = [a-zA-Z_][a-zA-Z0-9_]*
+        Two consecutive underscores are compiler
+        reserved but woun't give an Warning/Error
+        only if the name has already been defined.
+        This is to allow for c and assembly
+        compatibility and implement function
+        overloading.
+
+    INT_2   = 0b[0|1]*
+    INT_8   = 0[0-7]*
+    INT_10  = [1-9][0-9]*
+    INT_16  = 0x[0-9a-fA-F]*
+
+    FLOAT   = [0-9]*[.]?[0-9]*([eE][+-]?[0-9]+)?
+    CHAR    = '.'
+    STR     = "[^"]*"
+
+Control Statements:
+// {} symbolises any kind of code block
+
+lable: // lables but scoped
+jmp lable
+
+func foo(x : int): int
+{
+    jmp foo(x); // "recurson" without preserving the stack frame
+}
+
+exit 1; // jumps to the end of the current scope 
+        // (dosn't work on functions)
+skip n; // skips n itterations of an loop the can also
+        // finishes execution before all itterations are skiped
+shutdown x; // returns x from main and shutsdown the application
+
+// if is an expr to so else if is possible
+if (cond) {}
+else (cond) {}
+
+switch(var)
+{
+case 9:
+    if (x) jmp 1; // jumps to case lable of value 1
+    exit;
+case 1, 2:
+   
+   exit; // replaces break
+default:
+
+   exit;
+}
+
+while (cond) {}
+do {} while (cond);
+
+for (ini_expr; cond; repeated_expr) {}
+for (0..100) {} // inclusiv for in increments of 1
+for (100..0) {} // also in reverse
+redo;   // calls the init_expr of the for loop again 
+        // (works with rage based for to)
+
+yield {}; // specify code to execute when exiting the current scope
+          // The latest yield is executed first (stack like behaveor)
+
+

@@ -161,7 +161,6 @@ typedef struct Intern {
 
 Arena intern_arena;
 
-
 /**
  * @Synopsis Allocates a new block of memory in the string intern arena.
  * This can be used to allow greater than and less than comparisons between

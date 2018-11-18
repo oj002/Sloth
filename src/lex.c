@@ -36,11 +36,61 @@ void init_keywords(void)
 {
     static bool inited = false;
     if (inited) return;
-    //KEYWORD(enum);
+    str_intern_grow(25 * sizeof(char*));
+    KEYWORD(enum);
+    KEYWORD(struct);
+    KEYWORD(union);
+    KEYWORD(const);
+    KEYWORD(val);
+    KEYWORD(proc);
+    KEYWORD(func);
+    KEYWORD(for);
+    KEYWORD(while);
+    KEYWORD(do);
+    KEYWORD(break);
+    KEYWORD(continue);
+    KEYWORD(return);
+    KEYWORD(if);
+    KEYWORD(else);
+    KEYWORD(switch);
+    KEYWORD(case);
+    KEYWORD(default);
+    KEYWORD(jmp);
+    KEYWORD(sizeof);
+    KEYWORD(alignof);
+    KEYWORD(typeof);
+    KEYWORD(offsetof);
+    KEYWORD(import);
+    first_keyword = enum_keyword;
+    last_keyword = import_keyword;
 
     inited = true;
 }
+#undef KEYWORD
 
+#define is_keyword_name(str) (first_keyword <= str && str <= last_keyword)
+
+typedef enum TokenKind
+{
+    EOF,
+    LPARAN, LBRACE, LBRACKET,
+    RPARAN, RBRACE, RBRACKET,
+    COLON, COMMA, DOT,
+    AT, POUND,
+    DOT_DOT,
+    DOT_DOT_DOT,
+    EOF,
+    EOF,
+    EOF,
+    EOF,
+    EOF,
+    EOF,
+    EOF,
+    EOF,
+    EOF,
+    EOF,
+    EOF,
+} TokenKind;
 
 void next_token(void)
 {
