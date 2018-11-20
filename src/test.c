@@ -34,3 +34,19 @@ void common_test(void)
     intern_test();
     puts("common_test done!");
 } 
+
+void keyword_test(void)
+{
+    init_keywords();
+    assert(is_keyword_name(first_keyword));
+    assert(is_keyword_name(last_keyword));
+    for (const char **it = keywords; it != buf_end(keywords); ++it)
+        assert(is_keyword_name(*it));
+    assert(!is_keyword_name("i am not a keyword"));
+}
+void lex_test(void)
+{
+    keyword_test();
+    assert(str_intern("func") == func_keyword);
+    puts("lex_test done!");
+}

@@ -26,7 +26,7 @@ const char *offsetof_keyword;
 
 const char *import_keyword;
 
-#define NUM_KEYWORDS 25
+#define NUM_KEYWORDS 26
 const char *first_keyword;
 const char *last_keyword;
 const char **keywords;
@@ -41,11 +41,10 @@ void init_keywords(void)
 {
     static bool inited = false;
     if (inited) return;
-    str_intern_grow(NUM_KEYWORDS * sizeof(char*));
-    KEYWORD(enum);
 #if defined(DEBUG)
     char *arena_end = intern_arena.end;
 #endif
+    KEYWORD(enum);
     KEYWORD(struct);
     KEYWORD(union);
     KEYWORD(const);
@@ -69,7 +68,9 @@ void init_keywords(void)
     KEYWORD(typeof);
     KEYWORD(offsetof);
     KEYWORD(import);
+
     DASSERT(intern_arena.end == arena_end);
+
     first_keyword = enum_keyword;
     last_keyword = import_keyword;
 
@@ -277,15 +278,59 @@ void error(CodePos pos, const char *fmt, ...)
 #define warning_here(...) (warnin(token.pos, __VA_ARGS__))
 #define fatal_error_here(...) (error_here(__VA_ARGS__), exit(EXIT_FAILUR))
 
+void scan_num(void)
+{
+   
+}
+
+char escape_to_char[256] = {
+    ['0'] = '\0',
+    ['\''] = '\'',
+    ['"'] = '"',
+    ['n'] = '\n',
+    ['r'] = '\r',
+    ['t'] = '\t',
+    ['v'] = '\v',
+    ['b'] = '\b',
+    ['a'] = '\a',
+};
+void scan_hex_escape(void)
+{
+   
+   token.int_val = '0'; 
+}
 void scan_char(void)
 {
-    
+    DASSERT(*stream == '\'');
+    token.kind = TOKEN_INT;
+    token.mod = MOD_CHAR;
+    ++stream;
+    switch (*stream)
+    {
+    case '\'':
+        error_here("Char literal cannot be empty"); 
+        return;
+    case '\\':
+        ++stream;
+        if (*stream == 'x')
+            scan_hex_escape();
+        else {
+            token.int_val = escape_to_char[*stream];
+            if (token.int_val == 0 && *stream != '0')
+                error_here("Invalid char literal escape '\\%c'", *stream);
+            ++stream;
+        }
+        break;
+    default:
+        token.int_val = *stream;
+        ++stream;
+        break;
+    }
+    if (*stream != '\'')
+        error_here("Expected closing char quotes, got '%c'", *stream);
+    else ++stream;
 }
 void scan_str(void)
-{
-    
-}
-void scan_num(void)
 {
     
 }

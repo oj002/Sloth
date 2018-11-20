@@ -127,7 +127,7 @@ typedef struct Arena {
 #define ARENA_BLOCK_SIZE (1024 * 1024)
 void arena_grow(Arena *a, size_t min_bytes)
 {
-    const size_t size = MAX(min_bytes, min_bytes);
+    const size_t size = MAX(min_bytes, ARENA_BLOCK_SIZE);
     a->ptr = xmalloc(size);
     a->end = a->ptr + size;
     buf_push(a->blocks, a->ptr);
@@ -173,8 +173,6 @@ Arena intern_arena;
  * This can be used to allow greater than and less than comparisons between
  * interned strings ensuring that they are grouped together sequentially.
  */
-#define str_intern_grow(nbytes) arena_grow(&intern_arena, nbytes)
-
 const char *str_intern_range(const char *start, const char *end)
 {
     static Intern *prev = NULL;
