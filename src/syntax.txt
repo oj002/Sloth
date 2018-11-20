@@ -50,23 +50,22 @@ func foo(x : int): int
 
 exit 1; // jumps to the end of the current scope 
         // (dosn't work on functions)
-skip n; // skips n itterations of an loop the can also
-        // finishes execution before all itterations are skiped
 shutdown x; // returns x from main and shutsdown the application
+            // This is not to use in librarys and only in your application
 
 // if is an expr to so else if is possible
 if (cond) {}
 else (cond) {}
 
-switch(var)
+switch(var) // just works for primitive types
 {
 case 9:
     if (x) jmp 1; // jumps to case lable of value 1
     exit;
-case 1, 2:
+case 1, 2: // chained cases
    
-   exit; // replaces break
-default:
+exit; // replaces break (implicitly converted to exit 1;)
+default: // jmp default is possible to
 
    exit;
 }
@@ -77,10 +76,11 @@ do {} while (cond);
 for (ini_expr; cond; repeated_expr) {}
 for (0..100) {} // inclusiv for in increments of 1
 for (100..0) {} // also in reverse
-redo;   // calls the init_expr of the for loop again 
+retry;   // calls the init_expr of the for loop again
         // (works with rage based for to)
+redo; // jumps to the start of the loop (no checking of the condition)
+skip n; // call the repeated_expr n times (basically skips n itterations)
+        // (works with range based for to)
 
 yield {}; // specify code to execute when exiting the current scope
           // The latest yield is executed first (stack like behaveor)
-
-

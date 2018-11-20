@@ -1,3 +1,8 @@
+#if defined(DEBUG)
+# define DASSERT(x) assert(x)
+#else
+# define DASSERT(x)
+#endif
 #define MAX(a, b) ((a) >= (b) ? (a) : (b))
 #define MIN(a, b) ((a) <= (b) ? (a) : (b))
 
@@ -134,6 +139,8 @@ void *arena_alloc(Arena *a, size_t nbytes)
     
     void *ret = a->ptr;
     a->ptr += nbytes;
+    DASSERT(a->ptr <= a->end);
+    DASSERT(a->ptr <= a->end);
     return ret;
 }
 void arena_free(Arena *a)
@@ -166,7 +173,7 @@ Arena intern_arena;
  * This can be used to allow greater than and less than comparisons between
  * interned strings ensuring that they are grouped together sequentially.
  */
-#define str_intern_grow(nbytes) arena_grow(intern_arena, nbytes)
+#define str_intern_grow(nbytes) arena_grow(&intern_arena, nbytes)
 
 const char *str_intern_range(const char *start, const char *end)
 {
