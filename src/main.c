@@ -22,5 +22,5 @@ int main(int argc, char const **argv)
 {
     common_test();
     lex_test();
-	return 0;
+    return 0;
 }

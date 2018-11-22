@@ -145,7 +145,6 @@ typedef enum TokenMod {
     MOD_BIN,
     MOD_OCT,
     MOD_CHAR,
-    MOD_MULTILINE,
 } TokenMod;
 
 const char* token_kind_name(TokenKind kind)
@@ -287,6 +286,7 @@ char escape_to_char[256] = {
     ['0'] = '\0',
     ['\''] = '\'',
     ['"'] = '"',
+    ['\\'] = '\\',
     ['n'] = '\n',
     ['r'] = '\r',
     ['t'] = '\t',
@@ -294,11 +294,6 @@ char escape_to_char[256] = {
     ['b'] = '\b',
     ['a'] = '\a',
 };
-void scan_hex_escape(void)
-{
-   
-   token.int_val = '0'; 
-}
 void scan_char(void)
 {
     DASSERT(*stream == '\'');
@@ -307,19 +302,19 @@ void scan_char(void)
     ++stream;
     switch (*stream)
     {
+    case '\n':
+        error_here("Char literal cannot contain new line");
+        ++stream;
+        break;
     case '\'':
         error_here("Char literal cannot be empty"); 
-        return;
+        break;
     case '\\':
         ++stream;
-        if (*stream == 'x')
-            scan_hex_escape();
-        else {
-            token.int_val = escape_to_char[*stream];
-            if (token.int_val == 0 && *stream != '0')
-                error_here("Invalid char literal escape '\\%c'", *stream);
-            ++stream;
-        }
+        token.int_val = escape_to_char[*stream];
+        if (token.int_val == 0 && *stream != '0')
+            error_here("Invalid char literal escape '\\%c'", *stream);
+        ++stream;
         break;
     default:
         token.int_val = *stream;
@@ -332,8 +327,67 @@ void scan_char(void)
 }
 void scan_str(void)
 {
-    
+    DASSERT(*stream == '"');
+    ++stream;
+    char *str = NULL;
+    while(*stream != '"' && *stream)
+    {
+        switch (*stream)
+        {
+        case '\n':
+            error_here("String literal can not contain new line");
+            break;
+        case '\\':
+        {
+            ++stream;
+            char c = escape_to_char[*stream];
+            if (c == 0 && *stream != '0')
+                error_here("Invalid char literal escape '\\%c'", *stream);
+            buf_push(str, c);
+            ++stream; 
+            break;
+        }
+        default:
+            buf_push(str, *stream);
+            ++stream;
+        }
+    }
+    if (*stream) ++stream;
+    else error_here("Unexpected end of line in string literal");
+
+    buf_push(str, 0);
+    token.kind = TOKEN_STR;
+    token.str_val = str;
 }
+
+#define CASE1(c1, k1) \
+    case c1: \
+        token.kind = TOKEN_##k1; \
+        ++stream; \
+        break
+
+#define CASE2(c1, k1, c2, k2) \
+    case c1: \
+        token.kind = TOKEN_##k1; \
+        ++stream; \
+        if (*stream == c2) { \
+            token.kind = TOKEN_##k2; \
+            ++stream; \
+        } \
+        break
+
+#define CASE3(c1, k1, c2, k2, c3, k3) \
+    case c1: \
+        token.kind = TOKEN_##k1; \
+        ++stream; \
+        if (*stream == c2) { \
+            token.kind = TOKEN_##k2; \
+            ++stream; \
+        } else if (*stream == c3) { \
+            token.kind = TOKEN_##k3; \
+            ++stream; \
+        } \
+        break
 
 void next_token(void)
 {
@@ -349,12 +403,8 @@ repeat:
             if (*stream++ == '\n')
                 ++token.pos.line, line_beg = stream;
         goto repeat;
-    case '\'':
-        scan_char();
-        break;
-    case '"':
-        scan_str();
-        break;
+    case '\'': scan_char(); break;
+    case '"': scan_str(); break;
     case '.':
         break;
     case '0': case '1': case '2': case '3': case '4':
@@ -369,13 +419,41 @@ repeat:
     case 'H': case 'I': case 'J': case 'K': case 'L': case 'M': case 'N':
     case 'O': case 'P': case 'Q': case 'R': case 'S': case 'T': case 'U':
     case 'V': case 'W': case 'X': case 'Y': case 'Z': case '_':
-    {
         while (isalnum(*stream) || *stream == '_')
             ++stream;
         token.name = str_intern_range(token.start, stream);
         token.kind = is_keyword_name(token.name) ? TOKEN_KEYWORD : TOKEN_NAME;
         break;
-    }
+    case '<':
+        token.kind = TOKEN_LT;
+        ++stream;
+        if (*stream == '<') {
+            token.kind = TOKEN_LSHIFT;
+            ++stream;
+            if (*stream == '=') {
+                token.kind = TOKEN_LSHIFT_ASSIGN;
+                ++stream;
+            }
+        } else if (*stream == '=') {
+            token.kind = TOKEN_LTEQ;
+            ++stream;
+        }
+        break;
+    case '>':
+        token.kind = TOKEN_GT;
+        ++stream;
+        if (*stream == '>') {
+            token.kind = TOKEN_RSHIFT;
+            ++stream;
+            if (*stream == '=') {
+                token.kind = TOKEN_RSHIFT_ASSIGN;
+                ++stream;
+            }
+        } else if (*stream == '=') {
+            token.kind = TOKEN_GTEQ;
+            ++stream;
+        }
+        break;
     case '/':
     {
         ++stream;
@@ -397,6 +475,7 @@ repeat:
                     ++level, stream += 2;
                 else if (*stream == '\n')
                     ++token.pos.line, ++stream;
+                else ++stream;
             }
             goto repeat;
         }
@@ -408,6 +487,25 @@ repeat:
         }
         break;
     }
+    CASE1('\0', EOF);
+    CASE1('(', LPARAN); CASE1('{', LBRACE); CASE1('[', LBRACKET);
+    CASE1(')', RPARAN); CASE1('}', RBRACE); CASE1(']', RBRACKET);
+    CASE1(',', COMMA);
+    CASE1('@', AT);
+    CASE1('#', POUND);
+    CASE1('?', QUESTION);
+    CASE1(';', SEMICOLON);
+    CASE1('~', NEG);
+    CASE2('!', NOT, '=', NOTEQ);
+    CASE2(':', COLON, '=', COLON_ASSIGN);
+    CASE2('=', ASSIGN, '=', EQ);
+    CASE2('^', XOR, '=', XOR_ASSIGN);
+    CASE2('*', MUL, '=', MUL_ASSIGN);
+    CASE2('%', MOD, '=', MOD_ASSIGN);
+    CASE3('+', ADD, '=', ADD_ASSIGN, '+', INC);
+    CASE3('-', SUB, '=', SUB_ASSIGN, '-', DEC);
+    CASE3('&', AND, '=', AND_ASSIGN, '&', AND_AND);
+    CASE3('|', OR, '=', OR_ASSIGN, '|', OR_OR);
     default:
         error_here("Invalid '%c' token, skipping", *stream);
         ++stream;
@@ -415,3 +513,26 @@ repeat:
     }
     token.end = stream;
 }
+
+void init_stream(const char *name, const char *buf)
+{
+    stream = buf;
+    line_beg = stream;
+    token.pos.name = name ? name : "<string>";
+    token.pos.line = 1;
+    next_token();
+}
+
+#define is_token(k) (token.kind == k)
+#define is_token_eof() (token.kind == TOKEN_EOF)
+#define is_token_name(name) (token.kind == TOKEN_NAME && token.name == name)
+#define is_keyword(name) (is_token(TOKEN_KEYWORD) && token.name == name)
+#define match_keyword(name) (is_keyword(name) ? (next_token(), true) : false)
+#define match_token(name) (is_token(name) ? (next_token(), true) : false)
+#define expect_token(name) \
+    (is_token(name) ? (next_token(), true) \
+     : (fatal_error_here("Expect token %s, got %s", \
+            token_kind_name(kind), token_info()), false)) 
+
+
+

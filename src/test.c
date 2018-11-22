@@ -44,9 +44,41 @@ void keyword_test(void)
         assert(is_keyword_name(*it));
     assert(!is_keyword_name("i am not a keyword"));
 }
+#define assert_token(x) assert(match_token(x))
+#define assert_token_name(x) \
+    assert(token.name == str_intern(x) && match_token(TOKEN_NAME))
+#define assert_token_int(x) \
+    assert(token.int_val == x && match_token(TOKEN_INT))
+#define assert_token_float(x) \
+    assert(token.float_val == x && match_token(TOKEN_FLOAT))
+#define assert_token_str(x) \
+    assert(strcmp(token.str_val, (x)) == 0 && match_token(TOKEN_STR))
+#define assert_token_eof() assert(is_token_eof())
+
 void lex_test(void)
 {
     keyword_test();
     assert(str_intern("func") == func_keyword);
+    
+    /*
+    init_stream(NULL, "0 2147483647 0x7fffffff 042 0b1111");
+    assert_token_int(0);
+    assert_token_int(2147483647);
+    assert_token_int(0x7fffffff);
+    assert_token_int(042);
+    assert_token_int(0b1111);
+    assert_token_eof();
+    */
+    
+    init_stream(NULL, "'a' /* test /* test2 */ \n*/ '\\n' // test");
+    assert_token_int('a');
+    assert_token_int('\n');
+    assert_token_eof();
+    
+    init_stream(NULL, "\"foo\" \"test \\nlol\"");
+    assert_token_str("foo");
+    assert_token_str("test \nlol");
+    assert_token_eof();
+
     puts("lex_test done!");
 }
