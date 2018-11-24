@@ -35,7 +35,8 @@ const char *assert_name;
 const char *static_assert_name;
 const char *assert_name;
 
-#define KEYWORD(name) name##_keyword = str_intern(#name); buf_push(keywords, name##_keyword)
+#define KEYWORD(name) \
+    name##_keyword = str_intern(#name); buf_push(keywords, name##_keyword)
 
 void init_keywords(void)
 {
@@ -87,8 +88,8 @@ typedef enum TokenKind
 {
     TOKEN_EOF,
     TOKEN_COLON,
-    TOKEN_LPARAN, TOKEN_LBRACE, TOKEN_LBRACKET,
-    TOKEN_RPARAN, TOKEN_RBRACE, TOKEN_RBRACKET,
+    TOKEN_LPAREN, TOKEN_LBRACE, TOKEN_LBRACKET,
+    TOKEN_RPAREN, TOKEN_RBRACE, TOKEN_RBRACKET,
     TOKEN_COMMA,
     TOKEN_DOT,
     TOKEN_DOT_DOT,
@@ -153,10 +154,10 @@ const char* token_kind_name(TokenKind kind)
     {
     case TOKEN_EOF: return "EOF";
     case TOKEN_COLON: return ":";
-    case TOKEN_LPARAN: return "(";
+    case TOKEN_LPAREN: return "(";
     case TOKEN_LBRACE: return "{";
     case TOKEN_LBRACKET: return "[";
-    case TOKEN_RPARAN: return ")";
+    case TOKEN_RPAREN: return ")";
     case TOKEN_RBRACE: return "}";
     case TOKEN_RBRACKET: return "]";
     case TOKEN_COMMA: return ",";
@@ -277,9 +278,91 @@ void error(CodePos pos, const char *fmt, ...)
 #define warning_here(...) (warnin(token.pos, __VA_ARGS__))
 #define fatal_error_here(...) (error_here(__VA_ARGS__), exit(EXIT_FAILUR))
 
-void scan_num(void)
+uint8_t char_to_digit[256] = {
+    ['0'] = 0,
+    ['1'] = 1,
+    ['2'] = 2,
+    ['3'] = 3,
+    ['4'] = 4,
+    ['5'] = 5,
+    ['6'] = 6,
+    ['7'] = 7,
+    ['8'] = 8,
+    ['9'] = 9,
+    ['a'] = 10, ['A'] = 10,
+    ['b'] = 11, ['B'] = 11,
+    ['c'] = 12, ['C'] = 12,
+    ['d'] = 13, ['D'] = 13,
+    ['e'] = 14, ['E'] = 14,
+    ['f'] = 15, ['F'] = 15,
+};
+
+void scan_float()
 {
-   
+    DASSERT(isdigit(*stream) || *stream == '.' ||
+              *stream == 'e' || *stream == 'E');
+    const char *start = stream;
+
+    while (isdigit(*stream))
+        ++stream;
+    if (*stream == '.')
+        ++stream;
+    while (isdigit(*stream))
+        ++stream;
+
+    if (*stream == 'e' || *stream == 'E')
+    {
+        ++stream;
+        if (*stream == '+' || *stream == '-')
+            ++stream;
+        if (!isdigit(*stream))
+            error_here("Expected digit after float literal exponent, found '%c'.", *stream);
+        while (isdigit(*stream))
+            ++stream;
+    }
+    double val = strtod(start, NULL);
+    if (val == HUGE_VAL)
+        error_here("Float literal overflow");
+    token.kind = TOKEN_FLOAT;
+    token.float_val = val;
+}
+
+void scan_int(void)
+{
+    DASSERT(isdigit(*stream));
+    token.kind = TOKEN_INT;
+    token.int_val = 0;
+    int base = 10;
+    if (*stream == '0') // Special base or 0
+    {
+        ++stream;
+        switch (*stream)
+        {
+        case 'x': base = 16; ++stream; break;
+        case 'b': base = 2; ++stream; break;
+        case '0': case '1': case '2': case '3':
+        case '4': case '5': case '6': case '7':
+            base = 8;
+            break;
+        default:
+            return;
+        }
+    }
+    while (true)
+    {
+        int digit = char_to_digit[*stream];
+        if (digit == 0 && *stream != '0')
+            break;
+        if (token.int_val > (UINT64_MAX - digit) / base) {
+            error_here("Integer literal overflow, preceeding with 0");
+            while (isdigit(*stream))
+                ++stream;
+            token.int_val = 0;
+            break;
+        }
+        token.int_val = token.int_val * base + digit;
+        ++stream;
+    }
 }
 
 char escape_to_char[256] = {
@@ -406,10 +489,28 @@ repeat:
     case '\'': scan_char(); break;
     case '"': scan_str(); break;
     case '.':
+        if (isdigit(stream[1]))
+            scan_float();
+        else if (stream[1] == '.')
+        {
+            if (stream[2] == '.')
+                token.kind = TOKEN_DOT_DOT, stream += 2;
+            else 
+                token.kind = TOKEN_DOT_DOT_DOT, stream += 3; 
+        }
+        else 
+            token.kind = TOKEN_DOT, ++stream;
         break;
     case '0': case '1': case '2': case '3': case '4':
     case '5': case '6': case '7': case '8': case '9':
-        scan_num();
+        while (isdigit(*stream))
+            ++stream;
+        char c = *stream;
+        stream = token.start;
+        if (c == '.' || c == 'e' || c == 'E')
+            scan_float();
+        else
+            scan_int();
         break;
     case 'a': case 'b': case 'c': case 'd': case 'e': case 'f': case 'g':
     case 'h': case 'i': case 'j': case 'k': case 'l': case 'm': case 'n':
@@ -488,8 +589,8 @@ repeat:
         break;
     }
     CASE1('\0', EOF);
-    CASE1('(', LPARAN); CASE1('{', LBRACE); CASE1('[', LBRACKET);
-    CASE1(')', RPARAN); CASE1('}', RBRACE); CASE1(']', RBRACKET);
+    CASE1('(', LPAREN); CASE1('{', LBRACE); CASE1('[', LBRACKET);
+    CASE1(')', RPAREN); CASE1('}', RBRACE); CASE1(']', RBRACKET);
     CASE1(',', COMMA);
     CASE1('@', AT);
     CASE1('#', POUND);
@@ -533,6 +634,4 @@ void init_stream(const char *name, const char *buf)
     (is_token(name) ? (next_token(), true) \
      : (fatal_error_here("Expect token %s, got %s", \
             token_kind_name(kind), token_info()), false)) 
-
-
 
